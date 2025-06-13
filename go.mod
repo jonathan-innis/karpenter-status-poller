@@ -1,4 +1,4 @@
-module github.com/jonathan-innis/karpenter-status-tracker
+module github.com/jonathan-innis/scratch/status_tracker
 
 go 1.24.2
 

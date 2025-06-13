@@ -25,7 +25,7 @@ func main() {
 	lo.Must0(cache.WaitForCacheSync(ctx))
 	c := lo.Must(client.New(config, client.Options{Cache: &client.CacheOptions{Reader: cache}}))
 
-	fmt.Println("time,node_total,node_ready,node_tainted,node_deleting,nodeclaim_total,nodeclaim_launched,nodeclaim_registered,nodeclaim_initialized,nodeclaim_disrupted,nodeclaim_deleting")
+	fmt.Println("time,node_total,node_ready,node_tainted,node_deleting,nodeclaim_total,nodeclaim_launched,nodeclaim_registered,nodeclaim_initialized,nodeclaim_drifted,nodeclaim_disrupted,nodeclaim_deleting")
 	for {
 		nodeList := &corev1.NodeList{}
 		if err := c.List(ctx, nodeList); err != nil {
@@ -35,7 +35,7 @@ func main() {
 		if err := c.List(ctx, nodeClaimList); err != nil {
 			continue
 		}
-		var launchedCount, registeredCount, initializedCount, deletingCount, disruptedCount, nodeReadyCount, nodeDeletingCount, nodeTaintedCount atomic.Int64
+		var launchedCount, registeredCount, initializedCount, driftedCount, deletingCount, disruptedCount, nodeReadyCount, nodeDeletingCount, nodeTaintedCount atomic.Int64
 		workqueue.ParallelizeUntil(ctx, 100, len(nodeClaimList.Items), func(i int) {
 			if nodeClaimList.Items[i].StatusConditions().Get(v1.ConditionTypeLaunched).IsTrue() {
 				launchedCount.Add(1)
@@ -45,6 +45,9 @@ func main() {
 			}
 			if nodeClaimList.Items[i].StatusConditions().Get(v1.ConditionTypeInitialized).IsTrue() {
 				initializedCount.Add(1)
+			}
+			if nodeClaimList.Items[i].StatusConditions().Get(v1.ConditionTypeDrifted).IsTrue() {
+				driftedCount.Add(1)
 			}
 			if nodeClaimList.Items[i].StatusConditions().Get(v1.ConditionTypeDisruptionReason).IsTrue() {
 				disruptedCount.Add(1)
@@ -66,7 +69,7 @@ func main() {
 				nodeTaintedCount.Add(1)
 			}
 		})
-		fmt.Printf("%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n", time.Now().Format(time.RFC3339), len(nodeList.Items), nodeReadyCount.Load(), nodeTaintedCount.Load(), nodeDeletingCount.Load(), len(nodeClaimList.Items), launchedCount.Load(), registeredCount.Load(), initializedCount.Load(), disruptedCount.Load(), deletingCount.Load())
+		fmt.Printf("%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n", time.Now().Format(time.RFC3339), len(nodeList.Items), nodeReadyCount.Load(), nodeTaintedCount.Load(), nodeDeletingCount.Load(), len(nodeClaimList.Items), launchedCount.Load(), registeredCount.Load(), initializedCount.Load(), driftedCount.Load(), disruptedCount.Load(), deletingCount.Load())
 		time.Sleep(time.Second * 5)
 	}
 }
