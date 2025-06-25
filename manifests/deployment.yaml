@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: karpenter-status-poller
+  labels:
+    app: karpenter-status-poller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: karpenter-status-poller
+  template:
+    metadata:
+      labels:
+        app: karpenter-status-poller
+    spec:
+      serviceAccountName: karpenter-status-poller
+      containers:
+      - name: karpenter-status-poller
+        image: <Update with Container Image>
+        resources:
+          requests:
+            cpu: "2"
+            memory: "4Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+        volumeMounts:
+        - name: data-volume
+          mountPath: /app
+      tolerations:
+      - key: "CriticalAddonsOnly"
+        operator: "Exists"
+        effect: "NoSchedule"
+      volumes:
+      - name: data-volume
+        emptyDir: {}
+      priorityClassName: system-cluster-critical

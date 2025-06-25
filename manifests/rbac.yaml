@@ -2,12 +2,12 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: csv-creator-sa
+  name: karpenter-status-poller
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: node-nodeclaim-reader
+  name: karpenter-status-poller
 rules:
 - apiGroups: [""]
   resources: ["nodes"]
@@ -19,12 +19,12 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: csv-creator-binding
+  name: karpenter-status-poller
 subjects:
 - kind: ServiceAccount
-  name: csv-creator-sa
+  name: karpenter-status-poller
   namespace: default
 roleRef:
   kind: ClusterRole
-  name: node-nodeclaim-reader
+  name: karpenter-status-poller
   apiGroup: rbac.authorization.k8s.io
