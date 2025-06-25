@@ -31,24 +31,24 @@ func main() {
 	c := lo.Must(client.New(config, client.Options{Cache: &client.CacheOptions{Reader: cache}}))
 
 	// Define flags
-	outputFile := flag.String("o", "", "Output CSV file")
-	overwrite := flag.Bool("f", false, "Force overwrite if file exists")
+	outputFile := lo.FromPtr(flag.String("o", "", "Output CSV file"))
+	overwrite := lo.FromPtr(flag.Bool("f", false, "Force overwrite if file exists"))
 	flag.Parse()
 
 	// Check if file exists
-	_, err := os.Stat(*outputFile)
+	_, err := os.Stat(outputFile)
 	fileExists := !os.IsNotExist(err)
 
-	if fileExists && !*overwrite && lo.FromPtr(outputFile) != "" {
-		log.Fatalf("File %s already exists. Use -f flag to force overwrite", *outputFile)
+	if fileExists && !overwrite && outputFile != "" {
+		log.Fatalf("file %s already exists. Use -f flag to force overwrite\n", outputFile)
 	}
 
 	file := &os.File{}
 	var multiWriter io.Writer
-	if lo.FromPtr(outputFile) != "" {
-		file, err = os.Create(lo.FromPtr(outputFile))
+	if outputFile != "" {
+		file, err = os.Create(outputFile)
 		if err != nil {
-			fmt.Println(err)
+			log.Fatalf("failed creating output file %s, %s\n", outputFile, err)
 			return
 		}
 		multiWriter = io.MultiWriter(
@@ -63,11 +63,8 @@ func main() {
 	csvWriter := csv.NewWriter(multiWriter)
 	defer file.Close()
 
-	head := []string{"time", "node_total", "node_ready", "node_unhealthy", "node_tainted", "node_deleting", "nodeclaim_total", "nodeclaim_launched", "nodeclaim_registered", "nodeclaim_initialized", "nodeclaim_drifted", "nodeclaim_disrupted", "nodeclaim_deleting"}
-	err = csvWriter.Write(head)
-	if err != nil {
-		panic(err)
-	}
+	header := []string{"time", "node_total", "node_ready", "node_unhealthy", "node_tainted", "node_deleting", "nodeclaim_total", "nodeclaim_launched", "nodeclaim_registered", "nodeclaim_initialized", "nodeclaim_drifted", "nodeclaim_disrupted", "nodeclaim_deleting"}
+	lo.Must0(csvWriter.Write(header))
 	csvWriter.Flush()
 	for {
 		nodeList := &corev1.NodeList{}
@@ -116,9 +113,8 @@ func main() {
 			}
 		})
 		record := []string{time.Now().Format(time.TimeOnly), fmt.Sprint(len(nodeList.Items)), fmt.Sprint(nodeReadyCount.Load()), fmt.Sprint(nodeUnhealthyCount.Load()), fmt.Sprint(nodeTaintedCount.Load()), fmt.Sprint(nodeDeletingCount.Load()), fmt.Sprint(len(nodeClaimList.Items)), fmt.Sprint(launchedCount.Load()), fmt.Sprint(registeredCount.Load()), fmt.Sprint(initializedCount.Load()), fmt.Sprint(driftedCount.Load()), fmt.Sprint(disruptedCount.Load()), fmt.Sprint(deletingCount.Load())}
-		err = csvWriter.Write(record)
-		if err != nil {
-			panic(err)
+		if err := csvWriter.Write(record); err != nil {
+			log.Printf("failed writing data, %s\n", err)
 		}
 		csvWriter.Flush()
 		time.Sleep(time.Second * 5)
@@ -126,10 +122,8 @@ func main() {
 }
 
 func GetCondition(n *corev1.Node, match corev1.NodeConditionType) corev1.NodeCondition {
-	for _, condition := range n.Status.Conditions {
-		if condition.Type == match {
-			return condition
-		}
-	}
-	return corev1.NodeCondition{}
+	cond, _ := lo.Find(n.Status.Conditions, func(c corev1.NodeCondition) bool {
+		return c.Type == match
+	})
+	return cond
 }
