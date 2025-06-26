@@ -31,22 +31,22 @@ func main() {
 	c := lo.Must(client.New(config, client.Options{Cache: &client.CacheOptions{Reader: cache}}))
 
 	// Define flags
-	outputFile := lo.FromPtr(flag.String("o", "", "Output CSV file"))
-	overwrite := lo.FromPtr(flag.Bool("f", false, "Force overwrite if file exists"))
+	outputFile := flag.String("o", "", "Output CSV file")
+	overwrite := flag.Bool("f", false, "Force overwrite if file exists")
 	flag.Parse()
 
 	// Check if file exists
-	_, err := os.Stat(outputFile)
+	_, err := os.Stat(lo.FromPtr(outputFile))
 	fileExists := !os.IsNotExist(err)
 
-	if fileExists && !overwrite && outputFile != "" {
+	if fileExists && !lo.FromPtr(overwrite) && lo.FromPtr(outputFile) != "" {
 		log.Fatalf("file %s already exists. Use -f flag to force overwrite\n", outputFile)
 	}
 
 	file := &os.File{}
 	var multiWriter io.Writer
-	if outputFile != "" {
-		file, err = os.Create(outputFile)
+	if lo.FromPtr(outputFile) != "" {
+		file, err = os.Create(lo.FromPtr(outputFile))
 		if err != nil {
 			log.Fatalf("failed creating output file %s, %s\n", outputFile, err)
 			return
